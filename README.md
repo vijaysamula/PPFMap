@@ -8,10 +8,10 @@ implementation is as described in the [SLAM++](http://homes.cs.washington.edu/~n
 
 To build this project you will need:
 
-+ Point Cloud Library (PCL 1.7) : built with CUDA support.
++ Point Cloud Library (PCL 1.8.1) : built with CUDA support.
 + Eigen library 3.0
-+ CUDA 5.0
-+ cmake 2.8
++ CUDA >10
++ cmake 3
 
 ### Compile and run
 
@@ -24,6 +24,7 @@ You can set the specific capability on the `CMakeLists.txt` file, in the
     cd build
     cmake ..
     make
+    make install
     ./demo
 ```
 
