@@ -11,6 +11,7 @@
 #include <PPFMap/Pose.h>
 #include <PPFMap/DiscretizedPPF.h>
 #include <PPFMap/ppf_cuda_calls.h>
+#include <iostream>
 
 
 namespace ppfmap {
@@ -100,7 +101,7 @@ public:
      *  the model.
      *  \return True if the object appears in the scene, false otherwise.
      */
-    bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
+    void detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 Eigen::Affine3f& trans, 
                 pcl::Correspondences& correspondences, 
                 int& votes);
@@ -115,7 +116,7 @@ public:
     bool detect(const PointCloudPtr cloud, const NormalsPtr normals, 
                 std::vector<Pose>& poses);
 
-    bool detect(const PointCloudPtr cloud, const NormalsPtr normals,
+    void detect(const PointCloudPtr cloud, const NormalsPtr normals,
                 pcl::Correspondences& correspondences, int votes_threshold);
 private:
 

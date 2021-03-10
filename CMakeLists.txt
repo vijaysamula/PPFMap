@@ -11,18 +11,18 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake")
 ##############################################################################
 
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag(-std=c++11 SUPPORTS_STD_CXX11)
+check_cxx_compiler_flag(-std=c++14 SUPPORTS_STD_CXX14)
 check_cxx_compiler_flag(-std=c++0x SUPPORTS_STD_CXX01)
-if(SUPPORTS_STD_CXX11)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++11")
+if(SUPPORTS_STD_CXX14)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++14")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++14")
 elseif(SUPPORTS_STD_CXX01)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++0x")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c++0x")
 else()
-     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support.")
+     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support.")
 endif()
 
 
@@ -31,13 +31,13 @@ endif()
 #   Dependencies                                                             #
 ##############################################################################
 
-set (CUDA_ARCH "sm_35" CACHE STRING "Cuda Architechture") 
+set (CUDA_ARCH "sm_80" CACHE STRING "Cuda Architechture") 
 
 find_package (CUDA REQUIRED)
 
 set (DEMO_FILES src/demo.cpp) 
 
-set (CPP_FILES "")
+set (CPP_FILES "src/my_ppf.cpp")
 
 set (HPP_FILES 
     include/PPFMap/cuda_map.h
@@ -60,8 +60,18 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 add_definitions(-DGPU)
 cuda_include_directories (${CMAKE_SOURCE_DIR}/include)
 
+##set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; -gencode=arch=compute_30,code=sm_30")
+##set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}; -gencode=arch=compute_30,code=compute_30")
 
-set(CUDA_ARCH_BIN "20 30 32 35 37 50 52" CACHE STRING "Specify 'real' GPU arch to build binaries for, BIN(PTX) format is supported. Example: 1.3 2.1(1.3) or 13 21(13)")
+IF ((CUDA_VERSION VERSION_GREATER "10.0") OR (CUDA_VERSION VERSION_EQUAL "10.0"))
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_75,code=sm_75")
+ENDIF()
+
+IF ((CUDA_VERSION VERSION_GREATER "11.0") OR (CUDA_VERSION VERSION_EQUAL "11.0"))
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -gencode arch=compute_80,code=sm_80,  -Wno-deprecated-gpu-targets")
+ENDIF()
+
+set(CUDA_ARCH_BIN " 50 52 60 " CACHE STRING "Specify 'real' GPU arch to build binaries for, BIN(PTX) format is supported. Example: 1.3 2.1(1.3) or 13 21(13)")
 set(CUDA_ARCH_PTX "" CACHE STRING "Specify 'virtual' PTX arch to build PTX intermediate code for. Example: 1.0 1.2 or 10 12")              
 
 include(CudaComputeTargetFlags)
@@ -82,6 +92,9 @@ include_directories (${PCL_INCLUDE_DIRS})
 
 cuda_add_executable(demo ${DEMO_FILES})
 target_link_libraries (demo ppfmap ${PCL_LIBRARIES} ${LIBRARIES})
+
+cuda_add_executable(my_ppf ${CPP_FILES})
+target_link_libraries (my_ppf ppfmap ${PCL_LIBRARIES} ${LIBRARIES})
 
 
 ##############################################################################

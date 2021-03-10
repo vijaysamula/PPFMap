@@ -67,6 +67,7 @@ ppfmap::PPFMatch<PointT, NormalT>::detect(const PointCloudPtr scene,
     const int angle_bins = 30;
     std::vector<int> accumulator(model_->size() * angle_bins, 0);
 
+    std::cout<<"accumulator array :"<<accumulator.size()<<std::endl;
     pcl::KdTreeFLANN<PointT> scene_search;
     scene_search.setInputCloud(scene);
 
@@ -76,24 +77,25 @@ ppfmap::PPFMatch<PointT, NormalT>::detect(const PointCloudPtr scene,
     } else {
         ref_indices = pcl::IndicesPtr(new std::vector<int>(scene->size()));
         std::iota(ref_indices->begin(), ref_indices->end(), 0);
+        
     }
-
+   
     for (const auto& i : *ref_indices) {
 
         const auto& p1 = scene->at(i);
         const auto& n1 = normals->at(i);
-
+        
         if (!pcl::isFinite(p1) || !pcl::isFinite(n1)) {
             continue;
         }
-
+        
         const auto Tsg = getTg(p1, n1);
 
         // Loop through nearest neighbors
         std::vector<int> neighbor_indices;
         std::vector<float> distances;
         scene_search.radiusSearch(p1, neighborhood_percentage * model_diameter, neighbor_indices, distances);
-
+        
         for (const auto& j : neighbor_indices) {
 
             const auto& p2 = scene->at(j);
@@ -167,11 +169,12 @@ ppfmap::PPFMatch<PointT, NormalT>::detect(const PointCloudPtr scene,
     // Sort the pose vector by the poses votes
     std::sort(poses.begin(), poses.end(), 
         [](const Pose& a, const Pose& b) { return a.votes > b.votes; });
+    return true;
 }
 
 
 template <typename PointT, typename NormalT>
-bool ppfmap::PPFMatch<PointT, NormalT>::detect(
+void ppfmap::PPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr scene, const NormalsPtr normals, 
     pcl::Correspondences& correspondences, int votes_threshold) {
 
@@ -186,7 +189,7 @@ bool ppfmap::PPFMatch<PointT, NormalT>::detect(
 
 
 template <typename PointT, typename NormalT>
-bool ppfmap::PPFMatch<PointT, NormalT>::detect(
+void ppfmap::PPFMatch<PointT, NormalT>::detect(
     const PointCloudPtr scene, const NormalsPtr normals, 
     Eigen::Affine3f& trans, 
     pcl::Correspondences& correspondences,
