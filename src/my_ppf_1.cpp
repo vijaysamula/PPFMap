@@ -13,10 +13,34 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include <pcl/registration/icp.h>
+#include <pcl/registration/icp_nl.h>
+#include <pcl/registration/transforms.h>
+
 #include <PPFMap/PPFMap.h>
 #include <PPFMap/PPFMatch.h>
 #include <PPFMap/CudaPPFMatch.h>
 
+
+pcl::PointCloud<pcl::PointNormal>::Ptr IcpTuning(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target,Eigen::Affine3f transform) 
+{
+    pcl::PointCloud<pcl::PointNormal>::Ptr sourceTransformed (new pcl::PointCloud<pcl::PointNormal>);
+    pcl::IterativeClosestPoint<pcl::PointNormal,pcl::PointNormal> icp;
+    pcl::transformPointCloud(*source, *sourceTransformed, transform);
+    icp.setInputSource(sourceTransformed);
+    icp.setInputTarget(target);
+    //icp.setMaxCorrespondenceDistance (0.05);
+    icp.setMaximumIterations(30);
+    // Set the transformation epsilon (criterion 2)
+    icp.setTransformationEpsilon (1e-8);
+
+    pcl::PointCloud<pcl::PointNormal>::Ptr Final (new pcl::PointCloud<pcl::PointNormal>);
+
+    icp.align(*Final);
+
+    return Final;
+
+}
 
 int main(int argc, char *argv[]) {
     char name[1024];
@@ -35,59 +59,63 @@ int main(int argc, char *argv[]) {
     //  Load the point clouds of the model and the scene
     // ========================================================================
 
-    //pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
-    //pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
+    // pcl::io::loadPCDFile("../clouds/milk.pcd", *model);
+    // pcl::io::loadPCDFile("../clouds/milk_cartoon_all_small_clorox.pcd", *scene);
 
-    pcl::io::loadPCDFile("../clouds/model_chair2.pcd", *model);
+    pcl::io::loadPCDFile("../../pointcloud_analysis/data/Printing samples/cad_meshlab.pcd", *model_with_normals);
+
+    Eigen::Matrix4f transform = Eigen::Matrix4f::Identity();
+    transform (0,0) = transform (0,0) * 0.001;
+    transform (1,1) = transform (1,1) * 0.001;
+    transform (2,2) = transform (2,2) * 0.001;
+
+    pcl::transformPointCloud(*model_with_normals, *model_with_normals, transform);
+
+
+    
+
 
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
     pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
-    ne.setInputCloud(model);
-    ne.setSearchMethod(tree);
-    ne.setRadiusSearch(0.03f);
-    ne.compute(*model_normals);
-    pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+    // ne.setInputCloud(model);
+    // ne.setSearchMethod(tree);
+    // ne.setRadiusSearch(0.03f);
+    // ne.compute(*model_normals);
+    // pcl::concatenateFields(*model, *model_normals, *model_with_normals);
+
+    pcl::PointNormal minPoint, maxPoint;
+    pcl::getMinMax3D(*model_with_normals, minPoint, maxPoint);
+
+    float diagDistance = (maxPoint.getVector3fMap() - minPoint.getVector3fMap()).norm();
+    float leaf_size = 0.05*diagDistance;
 
     pcl::VoxelGrid<pcl::PointNormal> sor;
     sor.setInputCloud(model_with_normals);
-    sor.setLeafSize(0.05f, 0.05f, 0.05f);
+    sor.setLeafSize(leaf_size, leaf_size, leaf_size);
     sor.filter(*model_downsampled);
 
     //pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
-    pcl::io::loadPCDFile("../clouds/scene_chair.pcd", *scene_downsampled);
+    pcl::io::loadPCDFile("/home/vijay/3dp_Monitoring_ws/src/peek_project/pointcloud_analysis/data/filtered_cloudpcl.pcd", *scene);
+
+    
+    ne.setInputCloud(scene);
+    ne.setSearchMethod(tree);
+    ne.setRadiusSearch(leaf_size);
+    ne.compute(*scene_normals);
+    pcl::concatenateFields(*scene, *scene_normals, *scene_with_normals);
+
+    //pcl::VoxelGrid<pcl::PointNormal> sor;
+    sor.setInputCloud(scene_with_normals);
+    sor.setLeafSize(leaf_size, leaf_size, leaf_size);
+    sor.filter(*scene_downsampled);
 
     // ========================================================================
     //  Add gaussian noise to the model cloud
     // ========================================================================
     
-    const float stddev = 0.0f;
+    ;
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine generator(seed);
-
-    for (auto& point : *model_downsampled) {
-
-        std::normal_distribution<float> dist_x(point.x, stddev);
-        std::normal_distribution<float> dist_y(point.y, stddev);
-        std::normal_distribution<float> dist_z(point.z, stddev);
-        std::normal_distribution<float> dist_nx(point.normal_x, stddev);
-        std::normal_distribution<float> dist_ny(point.normal_y, stddev);
-        std::normal_distribution<float> dist_nz(point.normal_z, stddev);
-
-        point.x = dist_x(generator);
-        point.y = dist_y(generator);
-        point.z = dist_z(generator);
-
-        point.normal_x = dist_nx(generator);
-        point.normal_y = dist_ny(generator);
-        point.normal_z = dist_nz(generator);
-
-        const float norm = point.getNormalVector3fMap().norm();
-
-        point.normal_x /= norm;
-        point.normal_y /= norm;
-        point.normal_z /= norm;
-    }
-
     // ========================================================================
     //  Transform the model cloud with a random rigid transformation.
     // ========================================================================
@@ -127,7 +155,7 @@ int main(int argc, char *argv[]) {
             reference_point_indices->push_back(i); 
         }
     }
-
+    
     pcl::StopWatch timer;
     std::vector<ppfmap::Pose> poses;
     ppfmap::PPFMatch<pcl::PointNormal, pcl::PointNormal> ppf_matching;
@@ -135,21 +163,22 @@ int main(int argc, char *argv[]) {
     Eigen::Affine3f T;
     pcl::CorrespondencesPtr corr(new pcl::Correspondences());
 
-    ppf_matching.setDiscretizationParameters(0.01f, 12.0f / 180.0f * static_cast<float>(M_PI));
-    ppf_matching.setPoseClusteringThresholds(0.05f, 24.0f / 180.0f * static_cast<float>(M_PI),0.005);
-    ppf_matching.setMaxRadiusPercent(0.5f);
+    ppf_matching.setDiscretizationParameters(leaf_size, 15.0f / 180.0f * static_cast<float>(M_PI));
+    ppf_matching.setPoseClusteringThresholds(2*leaf_size, 24.0f / 180.0f * static_cast<float>(M_PI),0.005f);
+    ppf_matching.setMaxRadiusPercent(1);
     ppf_matching.setReferencePointIndices(reference_point_indices);
 
     timer.reset();
     ppf_matching.setModelCloud(model_downsampled, model_downsampled);
     std::cout << "PPF Map creation: " << timer.getTimeSeconds() << "s" <<  std::endl;
-
+    
     timer.reset();
-    ppf_matching.detect(scene_downsampled, scene_downsampled, T, *corr, votes);
+    Eigen::Vector3f cameraPosition(0, 0, 0);
+    ppf_matching.detect(scene_downsampled, scene_downsampled,model_downsampled, model_downsampled,cameraPosition, T, *corr, votes);
     //ppf_matching.detect(scene_downsampled, scene_downsampled, poses);
     std::cout << "Object detection: " << timer.getTimeSeconds() << "s" <<  std::endl;
 
-
+    
     // ========================================================================
     //  Visualize the clouds and the matching
     // ========================================================================
@@ -180,6 +209,11 @@ int main(int argc, char *argv[]) {
         pcl::transformPointCloud(*model_downsampled, *model_transformed, T);
         pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> green(model_transformed, 0, 255, 0);
         viewer->addPointCloud<pcl::PointNormal>(model_transformed, green, "model_transformed");
+
+        pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed_icp(new pcl::PointCloud<pcl::PointNormal>());
+        model_transformed_icp = IcpTuning(model_downsampled,scene_downsampled,T);
+        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> blau(model_transformed_icp, 0, 0, 255);
+        viewer->addPointCloud<pcl::PointNormal>(model_transformed_icp, blau, "model_transformed_icp");
 
         /*
          *auto& scene_point = scene_downsampled->at(pose.c.index_query);

@@ -64,11 +64,26 @@ public:
      * clustering step.
      *  \param[in] translation_thresh Translation threshold.
      *  \param[in] rotation_thresh Rotation threshold.
+     *   \param[in] clustering_thresh Rotation threshold.
      */
     void setPoseClusteringThresholds(const float translation_thresh,
-                                     const float rotation_thresh) {
+                                     const float rotation_thresh,
+                                     const float clustering_thresh) {
         translation_threshold = translation_thresh;
         rotation_threshold = rotation_thresh;
+        clustering_threshold = clustering_thresh;
+    }
+    /** \brief Sets the translation and rotation thresholds for the pose 
+     * clustering step.
+     *  \param[in] translation_thresh Translation threshold.
+     *  \param[in] rotation_thresh Rotation threshold.
+     */
+    void setPoseClusteringThresholds(const float translation_thresh,
+                                     const float rotation_thresh
+                                     ) {
+        translation_threshold = translation_thresh;
+        rotation_threshold = rotation_thresh;
+        
     }
 
     /** \brief Construct the PPF search structures for the model cloud.
@@ -105,6 +120,13 @@ public:
                 Eigen::Affine3f& trans, 
                 pcl::Correspondences& correspondences, 
                 int& votes);
+    void detect(const PointCloudPtr sceneCloud, const NormalsPtr sceneNormals,
+                const PointCloudPtr modelCloud,
+                const NormalsPtr modelNormals ,
+                Eigen::Vector3f& cameraPosition, 
+                Eigen::Affine3f& trans, 
+                pcl::Correspondences& correspondences, 
+                int& votes);
 
     /** \brief Search the given scene for the object and returns a vector with 
      * the poses sorted by the votes obtained in the Hough space.
@@ -134,6 +156,7 @@ private:
     float angle_step;
     float translation_threshold;
     float rotation_threshold;
+    float clustering_threshold;
     float neighborhood_percentage;
     float model_diameter;
 

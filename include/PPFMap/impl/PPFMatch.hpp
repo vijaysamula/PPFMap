@@ -190,7 +190,7 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
 
 template <typename PointT, typename NormalT>
 void ppfmap::PPFMatch<PointT, NormalT>::detect(
-    const PointCloudPtr scene, const NormalsPtr normals, 
+    const PointCloudPtr scene, const NormalsPtr normals,
     Eigen::Affine3f& trans, 
     pcl::Correspondences& correspondences,
     int& votes) {
@@ -198,10 +198,40 @@ void ppfmap::PPFMatch<PointT, NormalT>::detect(
     std::vector<Pose> poses;
     detect(scene, normals, poses);
     clusterPoses(
-        poses, 
+        poses,
         translation_threshold, 
         rotation_threshold,
         trans, 
         correspondences, 
         votes);
 }
+
+
+template <typename PointT, typename NormalT>
+void ppfmap::PPFMatch<PointT, NormalT>::detect(
+    const PointCloudPtr sceneCloud, const NormalsPtr sceneNormals,
+    const PointCloudPtr modelCloud,
+    const NormalsPtr modelNormals, 
+    Eigen::Vector3f& cameraPosition,
+    Eigen::Affine3f& trans, 
+    pcl::Correspondences& correspondences,
+    int& votes) {
+
+    std::vector<Pose> poses;
+    detect(sceneCloud, sceneNormals, poses);
+    clusterPoses<PointT,NormalT>(
+        poses,
+        modelCloud,
+        sceneCloud, 
+        modelNormals,
+        translation_threshold, 
+        rotation_threshold,
+        clustering_threshold,
+        neighborhood_percentage,
+        model_diameter,
+        cameraPosition,
+        trans, 
+        correspondences, 
+        votes);
+}
+

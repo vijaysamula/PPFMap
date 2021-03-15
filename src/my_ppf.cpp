@@ -12,6 +12,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/kdtree/kdtree_flann.h>
 
 #include <pcl/registration/icp.h>
 #include <pcl/registration/icp_nl.h>
@@ -22,7 +23,7 @@
 #include <PPFMap/CudaPPFMatch.h>
 
 
-pcl::PointCloud<pcl::PointNormal>::Ptr IcpTuning(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target,Eigen::Affine3f transform) 
+pcl::PointCloud<pcl::PointNormal>::Ptr IcpRegistration(pcl::PointCloud<pcl::PointNormal>::Ptr source, pcl::PointCloud<pcl::PointNormal>::Ptr target,Eigen::Affine3f transform) 
 {
     pcl::PointCloud<pcl::PointNormal>::Ptr sourceTransformed (new pcl::PointCloud<pcl::PointNormal>);
     pcl::IterativeClosestPoint<pcl::PointNormal,pcl::PointNormal> icp;
@@ -39,8 +40,10 @@ pcl::PointCloud<pcl::PointNormal>::Ptr IcpTuning(pcl::PointCloud<pcl::PointNorma
     icp.align(*Final);
 
     return Final;
-
 }
+
+
+
 
 int main(int argc, char *argv[]) {
     char name[1024];
@@ -95,7 +98,7 @@ int main(int argc, char *argv[]) {
     sor.filter(*model_downsampled);
 
     //pcl::io::loadPCDFile("../clouds/model_chair.pcd", *model_downsampled);
-    pcl::io::loadPCDFile("/home/vijay/3dp_Monitoring_ws/src/pointcloud_analysis/data/filtered_cloudpcl.pcd", *scene);
+    pcl::io::loadPCDFile("/home/vijay/3dp_Monitoring_ws/src/peek_project/pointcloud_analysis/data/filtered_cloudpcl.pcd", *scene);
 
     
     ne.setInputCloud(scene);
@@ -116,9 +119,6 @@ int main(int argc, char *argv[]) {
     ;
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine generator(seed);
-
-   
-
     // ========================================================================
     //  Transform the model cloud with a random rigid transformation.
     // ========================================================================
@@ -204,24 +204,27 @@ int main(int argc, char *argv[]) {
     }
 
     //for (const auto& pose : poses) {
-    
+        
+        
         viewer->removeShape("reference_line");
-        viewer->removePointCloud("model_transformed");
+        viewer->removePointCloud("model_transformed_icp");
         pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed(new pcl::PointCloud<pcl::PointNormal>());
         pcl::transformPointCloud(*model_downsampled, *model_transformed, T);
         pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> green(model_transformed, 0, 255, 0);
         viewer->addPointCloud<pcl::PointNormal>(model_transformed, green, "model_transformed");
 
+        
+
         pcl::PointCloud<pcl::PointNormal>::Ptr model_transformed_icp(new pcl::PointCloud<pcl::PointNormal>());
-        model_transformed_icp = IcpTuning(model_downsampled,scene_downsampled,T);
-        pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> blau(model_transformed_icp, 0, 0, 255);
+        //model_transformed_icp = IcpRegistration(model_downsampled,scene_downsampled,T);
+        //pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> blau(model_transformed_icp, 0, 0, 255);
         //viewer->addPointCloud<pcl::PointNormal>(model_transformed_icp, blau, "model_transformed_icp");
 
-        /*
-         *auto& scene_point = scene_downsampled->at(pose.c.index_query);
-         *auto& model_point = model_downsampled->at(pose.c.index_match);
-         *viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, "reference_line");
-         */
+        
+        //  auto& scene_point = scene_downsampled->at(pose.c.index_query);
+        //  auto& model_point = model_downsampled->at(pose.c.index_match);
+        //  viewer->addLine(scene_point, model_point, 1.0f, 0.0f, 0.0f, "reference_line");
+         
 
         while (!viewer->wasStopped()) {
             viewer->spinOnce();

@@ -37,7 +37,8 @@ find_package (CUDA REQUIRED)
 
 set (DEMO_FILES src/demo.cpp) 
 
-set (CPP_FILES "src/my_ppf.cpp")
+set (CPP_FILES "src/my_ppf.cpp" )
+set (CPP_FILES_1 "src/my_ppf_1.cpp" )
 
 set (HPP_FILES 
     include/PPFMap/cuda_map.h
@@ -95,6 +96,9 @@ target_link_libraries (demo ppfmap ${PCL_LIBRARIES} ${LIBRARIES})
 
 cuda_add_executable(my_ppf ${CPP_FILES})
 target_link_libraries (my_ppf ppfmap ${PCL_LIBRARIES} ${LIBRARIES})
+cuda_add_executable(my_ppf_1 ${CPP_FILES_1})
+target_link_libraries (my_ppf_1 ppfmap ${PCL_LIBRARIES} ${LIBRARIES})
+
 
 
 ##############################################################################
